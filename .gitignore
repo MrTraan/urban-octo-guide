@@ -1,0 +1,16 @@
+# Binaries
+/bin/
+*.exe
+*.out
+
+# Test artifacts
+*.test
+coverage.out
+
+# Editor
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
