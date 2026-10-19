@@ -16,7 +16,10 @@ func Connect(ctx context.Context, uri string) (*mongo.Client, error) {
 	opts := options.Client().
 		ApplyURI(uri).
 		SetServerSelectionTimeout(5 * time.Second).
-		SetConnectTimeout(5 * time.Second)
+		SetConnectTimeout(5 * time.Second).
+		// Decode nested documents into bson.M (map[string]any) instead of the
+		// ordered bson.D, so free-form event payloads convert straight to JSON.
+		SetBSONOptions(&options.BSONOptions{DefaultDocumentM: true})
 
 	client, err := mongo.Connect(opts)
 	if err != nil {
