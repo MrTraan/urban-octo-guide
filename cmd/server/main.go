@@ -5,11 +5,16 @@ import (
 	"context"
 	"log/slog"
 	"net"
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
+	grpcprom "github.com/grpc-ecosystem/go-grpc-middleware/providers/prometheus"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"go.mongodb.org/mongo-driver/v2/mongo"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
@@ -24,19 +29,20 @@ import (
 
 func main() {
 	addr := getenv("GRPC_ADDR", ":8080")
+	metricsAddr := getenv("METRICS_ADDR", ":9100")
 	mongoURI := getenv("MONGO_URI", "mongodb://localhost:27017")
 	mongoDB := getenv("MONGO_DB", "player")
 
 	log := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	slog.SetDefault(log)
 
-	if err := run(addr, mongoURI, mongoDB, log); err != nil {
+	if err := run(addr, metricsAddr, mongoURI, mongoDB, log); err != nil {
 		log.Error("server failed", "err", err)
 		os.Exit(1)
 	}
 }
 
-func run(addr, mongoURI, mongoDB string, log *slog.Logger) error {
+func run(addr, metricsAddr, mongoURI, mongoDB string, log *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
@@ -57,9 +63,18 @@ func run(addr, mongoURI, mongoDB string, log *slog.Logger) error {
 		return err
 	}
 
-	srv := grpc.NewServer(grpc.ChainUnaryInterceptor(logging(log)))
+	// Prometheus: per-RPC counters + latency histogram from one interceptor,
+	// plus the app-level gauges/counters from the player package.
+	reg := prometheus.NewRegistry()
+	reg.MustRegister(collectors.NewGoCollector())
+	rpcMetrics := grpcprom.NewServerMetrics(grpcprom.WithServerHandlingTimeHistogram())
+	reg.MustRegister(rpcMetrics)
+	player.RegisterMetrics(reg, store)
+
+	srv := grpc.NewServer(grpc.ChainUnaryInterceptor(rpcMetrics.UnaryServerInterceptor(), logging(log)))
 	playerv1.RegisterPlayerServiceServer(srv, player.NewService(store))
 	reflection.Register(srv) // lets grpcurl discover the API
+	rpcMetrics.InitializeMetrics(srv)
 
 	healthSrv := health.NewServer()
 	healthpb.RegisterHealthServer(srv, healthSrv)
@@ -70,10 +85,17 @@ func run(addr, mongoURI, mongoDB string, log *slog.Logger) error {
 		return err
 	}
 
+	// /metrics lives on its own HTTP port so it never shares the public gRPC one.
+	metricsSrv := &http.Server{
+		Addr:    metricsAddr,
+		Handler: promhttp.HandlerFor(reg, promhttp.HandlerOpts{}),
+	}
+
 	// Serve until a signal arrives, then let in-flight RPCs finish.
-	errCh := make(chan error, 1)
+	errCh := make(chan error, 2)
 	go func() { errCh <- srv.Serve(lis) }()
-	log.Info("server listening", "addr", addr, "mongo_db", mongoDB)
+	go func() { errCh <- metricsSrv.ListenAndServe() }()
+	log.Info("server listening", "addr", addr, "metrics_addr", metricsAddr, "mongo_db", mongoDB)
 
 	select {
 	case err := <-errCh:
@@ -81,6 +103,7 @@ func run(addr, mongoURI, mongoDB string, log *slog.Logger) error {
 	case <-ctx.Done():
 		log.Info("shutting down")
 		srv.GracefulStop()
+		_ = metricsSrv.Close()
 		return nil
 	}
 }

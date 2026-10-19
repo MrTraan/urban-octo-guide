@@ -111,6 +111,7 @@ func (s *Service) RecordEvent(ctx context.Context, req *playerv1.RecordEventRequ
 	if err != nil {
 		return nil, toStatus(err)
 	}
+	eventsRecorded.WithLabelValues(doc.Type).Inc()
 	return toEvent(doc)
 }
 

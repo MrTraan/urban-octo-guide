@@ -1,4 +1,4 @@
-.PHONY: proto build run test test-unit lint up down demo cli
+.PHONY: proto build run test test-unit lint up down demo load cli
 
 proto: ## Regenerate Go code from proto/ (needs protoc, protoc-gen-go, protoc-gen-go-grpc)
 	protoc -I proto \
@@ -24,14 +24,18 @@ lint: ## gofmt + go vet (+ golangci-lint when installed)
 	go vet ./...
 	@command -v golangci-lint >/dev/null && golangci-lint run ./... || echo "golangci-lint not installed, skipped"
 
-up: ## Start Mongo + service with docker compose
+up: ## Start Mongo + service + Prometheus + Grafana with docker compose
 	docker compose up --build -d
+	@echo "gRPC: localhost:8080  metrics: http://localhost:9100/metrics  Grafana: http://localhost:3000/d/player-service"
 
 down: ## Stop docker compose services
 	docker compose down -v
 
 demo: ## Run the end-to-end demo scenario against a running server
 	./scripts/demo.sh
+
+load: ## Send traffic for 60s so the Grafana dashboard has data
+	./scripts/load.sh 60
 
 cli: ## Build the CLI only
 	go build -o bin/playerctl ./cmd/playerctl

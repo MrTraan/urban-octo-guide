@@ -12,11 +12,37 @@ services:
   api:
     build: .
     ports:
-      - "8080:8080"
+      - "8080:8080" # gRPC
+      - "9100:9100" # Prometheus /metrics
     environment:
       GRPC_ADDR: ":8080"
+      METRICS_ADDR: ":9100"
       MONGO_URI: "mongodb://mongo:27017"
       MONGO_DB: "player"
     depends_on:
       mongo:
         condition: service_healthy
+
+  prometheus:
+    image: prom/prometheus:v3.2.1
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - api
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    ports:
+      - "3000:3000"
+    environment:
+      # Demo setup: no login, straight to the dashboard.
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: "Admin"
+      GF_AUTH_DISABLE_LOGIN_FORM: "true"
+    volumes:
+      - ./deploy/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./deploy/grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
