@@ -19,8 +19,8 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	playerv1 "github.com/MadBox-Games/backend-engineer-hiring/gen/player/v1"
-	mongocli "github.com/MadBox-Games/backend-engineer-hiring/internal/mongo"
+	playerv1 "github.com/MrTraan/urban-octo-guide/gen/player/v1"
+	mongocli "github.com/MrTraan/urban-octo-guide/internal/mongo"
 )
 
 // client talks to a real Service backed by a real Mongo (testcontainers),

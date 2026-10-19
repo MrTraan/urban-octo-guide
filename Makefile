@@ -6,9 +6,10 @@ proto: ## Regenerate Go code from proto/ (needs protoc, protoc-gen-go, protoc-ge
 		--go-grpc_out=gen --go-grpc_opt=paths=source_relative \
 		proto/player/v1/player.proto
 
-build: ## Build server and CLI into ./bin
+build: ## Build server, CLI and load generator into ./bin
 	go build -o bin/server ./cmd/server
 	go build -o bin/playerctl ./cmd/playerctl
+	go build -o bin/loadgen ./cmd/loadgen
 
 run: ## Run the server locally (expects Mongo at MONGO_URI, default localhost:27017)
 	go run ./cmd/server
@@ -34,8 +35,8 @@ down: ## Stop docker compose services
 demo: ## Run the end-to-end demo scenario against a running server
 	./scripts/demo.sh
 
-load: ## Send traffic for 60s so the Grafana dashboard has data
-	./scripts/load.sh 60
+load: ## Send ~200 req/s for 60s so the Grafana dashboard has data (RPS=..., DURATION=... to override)
+	go run ./cmd/loadgen -rps $(or $(RPS),200) -duration $(or $(DURATION),60s)
 
 cli: ## Build the CLI only
 	go build -o bin/playerctl ./cmd/playerctl

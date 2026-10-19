@@ -23,7 +23,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/structpb"
 
-	playerv1 "github.com/MadBox-Games/backend-engineer-hiring/gen/player/v1"
+	playerv1 "github.com/MrTraan/urban-octo-guide/gen/player/v1"
 )
 
 func main() {

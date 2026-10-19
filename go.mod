@@ -1,4 +1,4 @@
-module github.com/MadBox-Games/backend-engineer-hiring
+module github.com/MrTraan/urban-octo-guide
 
 go 1.26.0
 

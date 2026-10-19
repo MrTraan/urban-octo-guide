@@ -22,9 +22,9 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
-	playerv1 "github.com/MadBox-Games/backend-engineer-hiring/gen/player/v1"
-	mongocli "github.com/MadBox-Games/backend-engineer-hiring/internal/mongo"
-	"github.com/MadBox-Games/backend-engineer-hiring/internal/player"
+	playerv1 "github.com/MrTraan/urban-octo-guide/gen/player/v1"
+	mongocli "github.com/MrTraan/urban-octo-guide/internal/mongo"
+	"github.com/MrTraan/urban-octo-guide/internal/player"
 )
 
 func main() {

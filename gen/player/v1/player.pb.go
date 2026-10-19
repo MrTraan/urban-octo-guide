@@ -739,7 +739,7 @@ const file_player_v1_player_proto_rawDesc = "" +
 	"\rUpdateProfile\x12\x1f.player.v1.UpdateProfileRequest\x1a\x12.player.v1.Profile\x12>\n" +
 	"\vRecordEvent\x12\x1d.player.v1.RecordEventRequest\x1a\x10.player.v1.Event\x12[\n" +
 	"\x10ListRecentEvents\x12\".player.v1.ListRecentEventsRequest\x1a#.player.v1.ListRecentEventsResponse\x12^\n" +
-	"\x11GetSessionSummary\x12#.player.v1.GetSessionSummaryRequest\x1a$.player.v1.GetSessionSummaryResponseBHZFgithub.com/MadBox-Games/backend-engineer-hiring/gen/player/v1;playerv1b\x06proto3"
+	"\x11GetSessionSummary\x12#.player.v1.GetSessionSummaryRequest\x1a$.player.v1.GetSessionSummaryResponseB<Z:github.com/MrTraan/urban-octo-guide/gen/player/v1;playerv1b\x06proto3"
 
 var (
 	file_player_v1_player_proto_rawDescOnce sync.Once

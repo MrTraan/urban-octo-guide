@@ -11,8 +11,13 @@ Requires Docker. Two commands bring everything up and walk through the whole API
 ```bash
 make up     # mongo + the service on localhost:8080, Prometheus, Grafana
 make demo   # builds the CLI and runs an end-to-end scenario
-make load   # 60s of traffic, then watch http://localhost:3000/d/player-service
+make load   # ~200 req/s for 60s, then watch http://localhost:3000/d/player-service
 ```
+
+`make load RPS=1000 DURATION=5m` for more. The generator (`cmd/loadgen`) keeps one
+gRPC connection, fans requests across workers at a fixed rate, and sends a weighted
+mix: mostly events and session starts, some reads and updates, a few deliberate
+errors so the error panels are not flat.
 
 Then poke at it yourself:
 
@@ -63,8 +68,8 @@ Errors are plain gRPC statuses: `INVALID_ARGUMENT`, `NOT_FOUND`, `INTERNAL`.
 
 **Scope first.** The brief asks for a small surface built well, in ~4h. So: one proto
 file, one domain package, no framework, no interfaces that have a single
-implementation. Everything a reviewer needs to read is in four files
-(`store.go`, `service.go`, `validate.go`, `cmd/server/main.go`).
+implementation. Everything a reviewer needs to read is in five files
+(`store.go`, `service.go`, `validate.go`, `cmd/server/main.go`, `internal/player/metrics.go`).
 
 **gRPC + protobuf.** The consumer is a game client, not a browser: a typed contract,
 small binary payloads and generated clients fit better than REST. Reflection is on
@@ -78,9 +83,10 @@ proto/player/v1/     the contract
 gen/player/v1/       generated code (committed)
 cmd/server/          wiring: config, logging, metrics, health, reflection, graceful shutdown
 cmd/playerctl/       CLI client, one subcommand per RPC
+cmd/loadgen/         load generator for the dashboard
 internal/player/     store.go (Mongo) -> service.go (handlers) -> validate.go
 internal/mongo/      scaffold's connect helper, unchanged except one BSON option
-scripts/             demo.sh (end-to-end scenario), load.sh (traffic for the dashboard)
+scripts/demo.sh      end-to-end scenario
 deploy/              prometheus.yml, Grafana provisioning + dashboard JSON
 ```
 
@@ -114,6 +120,12 @@ status code, duration) from a single interceptor. Graceful shutdown on
 SIGINT/SIGTERM lets in-flight RPCs finish before Mongo is disconnected. Distroless,
 non-root container image.
 
+**Tests.** Integration tests run the real `Service` against a real Mongo
+(testcontainers) over an in-memory gRPC connection (`bufconn`), so they exercise the
+exact code path a client hits, including proto round-trips and status codes. Each
+test uses its own player id for isolation. Validation has plain table-driven unit
+tests; `go test -short` runs only those.
+
 ## Observability
 
 `make up` also starts Prometheus and Grafana; the **Player Service** dashboard is
@@ -139,26 +151,15 @@ by hand; panels: profiles / events / rps / error rate / p99 / health stat tiles,
 then requests by method, responses by status code, latency by method, events by
 type.
 
-**Tests.** Integration tests run the real `Service` against a real Mongo
-(testcontainers) over an in-memory gRPC connection (`bufconn`), so they exercise the
-exact code path a client hits, including proto round-trips and status codes. Each
-test uses its own player id for isolation. Validation has plain table-driven unit
-tests; `go test -short` runs only those.
-
 ## What I'd do with another day
 
-- **Identity.** Take the player id from an authenticated token (interceptor), not
-  the request body, so players can only touch their own data.
 - **Pagination** for events with an opaque cursor (`timestamp` + `_id`) instead of
   a bare limit.
 - **Observability.** OpenTelemetry tracing (metrics are done, traces are not);
   alert rules on error rate and p99; a Mongo slow-query log.
-- **Data lifecycle.** A TTL index or archival job on `events`; the summary's
-  per-type counts could become a pre-aggregated daily document if the 7-day
-  aggregation ever shows up in p99.
-- **Payload hygiene.** A size cap and per-type schema versioning for payloads.
-- **Hardening.** Request rate limiting, server-side timeouts via interceptor,
-  `golangci-lint` + CI (lint, unit, integration), image scanning.
+- **Load testing.** Use `cmd/loadgen` to find the knee of the latency curve on
+  the target hardware and set SLOs from it; the Mongo index choice is a
+  hypothesis until it has been measured under load.
 
 ## AI usage notes
 
@@ -172,4 +173,4 @@ Claude (Claude Code) was used throughout as a pair programmer:
   payloads to `structpb`, and millisecond timestamp precision in Mongo).
 - Writing this README from the design notes.
 - Adding the observability stack (metrics wiring, Prometheus/Grafana compose
-  services, and generating the dashboard JSON).
+  services, and generating the dashboard JSON) and the load generator.

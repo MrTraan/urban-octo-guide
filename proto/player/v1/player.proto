@@ -5,7 +5,7 @@ package player.v1;
 import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 
-option go_package = "github.com/MadBox-Games/backend-engineer-hiring/gen/player/v1;playerv1";
+option go_package = "github.com/MrTraan/urban-octo-guide/gen/player/v1;playerv1";
 
 // PlayerService powers the Player Profile feature of a game client.
 service PlayerService {

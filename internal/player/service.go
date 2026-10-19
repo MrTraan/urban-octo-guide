@@ -12,7 +12,7 @@ import (
 	"google.golang.org/protobuf/types/known/structpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
-	playerv1 "github.com/MadBox-Games/backend-engineer-hiring/gen/player/v1"
+	playerv1 "github.com/MrTraan/urban-octo-guide/gen/player/v1"
 )
 
 // Service implements the PlayerService gRPC API on top of Store.
